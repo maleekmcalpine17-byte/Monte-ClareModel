@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2028 Election Simulator</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1a1a1a;--mut:#6b6b6b;--line:#e3e1dc;--D:#2166ac;--R:#b2182b}
+@media(prefers-color-scheme:dark){:root{--bg:#141516;--card:#1d1f21;--ink:#ececec;--mut:#9a9a9a;--line:#33363a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+.w{max-width:1100px;margin:0 auto;padding:16px}h1{font:700 26px Georgia,serif;margin:8px 0 2px}.sub{color:var(--mut);margin:0 0 14px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:14px}
+h2{font:600 12px system-ui;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 10px}
+.ban{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.st b{display:block;font:700 24px Georgia,serif}.st span{font-size:12px;color:var(--mut)}.D{color:var(--D)}.R{color:var(--R)}
+.bar{height:10px;border-radius:5px;overflow:hidden;display:flex;margin-top:6px}.bar i{display:block;height:100%}
+.ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}label{font-size:12px;color:var(--mut);display:block}
+select,input[type=text]{width:100%;padding:8px;margin-top:3px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font:inherit}
+button.b{padding:8px 14px;border:0;border-radius:6px;background:var(--ink);color:var(--card);cursor:pointer;font:inherit;font-size:13px}
+.env{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.env .row{display:flex;gap:12px;align-items:center}.env input{flex:1}.env output{font:700 18px Georgia,serif;min-width:64px;text-align:center}
+.ends{display:flex;justify-content:space-between;font-size:11px;color:var(--mut)}
+summary{cursor:pointer;font-weight:600;font-size:14px}details .ctl{margin-top:12px}
+.tg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}.tg button{border:0;background:var(--card);color:var(--ink);padding:5px 12px;cursor:pointer;font:inherit;font-size:13px}.tg button.on{background:var(--ink);color:var(--card)}
+#map{width:100%}#map path{stroke:var(--card);stroke-width:.7}#map path:hover{stroke:var(--ink);stroke-width:1.6}
+#tip{position:fixed;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:6px;font-size:12px;display:none;z-index:9}
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}.chip{min-width:105px;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12px}.chip b{font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}th{cursor:pointer;color:var(--mut);font-weight:600;user-select:none}
+.wrap{max-height:520px;overflow:auto}thead th{position:sticky;top:0;background:var(--card)}.ft{font-size:11px;color:var(--mut)}
+.mh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+#map{height:auto;display:block}#map path.c{stroke-width:.15}#map path.sb{fill:none;stroke:var(--ink);stroke-width:.6;opacity:.45;pointer-events:none}
+.dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}.dg label{display:block}.dg b{font:700 13px Georgia,serif}
+</style></head><body><div class="w">
+<h1>2028 Presidential Election Simulator</h1><p class="sub">4,000 Monte Carlo simulations re-run on every change. Illustrative model with hand-set candidate modifiers, not a forecast.</p>
+<div class="card"><h2>Summary</h2><div class="ban" id="ban"></div><div class="bar" id="wb"></div></div>
+<div class="card"><h2>Control panel</h2><div class="ctl">
+<label>Democratic nominee<select id="dn"></select></label><label>Democratic running mate<select id="dv"></select></label>
+<label>Republican nominee<select id="rn"></select></label><label>Republican running mate<select id="rv"></select></label>
+<label>Third party<select id="tp"></select></label></div>
+<div class="env"><label for="env">National Environment / Popular Vote Shift (added to every state's 2024 margin)</label>
+<div class="row"><span class="R">R+15</span><input type="range" id="env" min="-15" max="15" step="0.1" value="1.5"><span class="D">D+15</span><output id="envo"></output><button class="b" id="envr" type="button">Reset</button></div></div></div>
+<div class="card"><h2>Demographic &amp; Geographic Shifts</h2><div class="dg" id="dg"></div>
+<div style="margin-top:12px"><button class="b" id="dr" type="button">Reset all</button> <span class="ft">Each slider shifts the margin among that group's voters. A state's (or county's) margin moves by the group's estimated share of its electorate times the slider. Race and geography sliders stack.</span></div></div>
+<details class="card" id="cc"><summary>+ Custom Candidate</summary><div class="ctl">
+<label>Name<input type="text" id="cn" placeholder="e.g. Jane Doe"></label>
+<label>Party<select id="cp"><option value="D">Democrat</option><option value="R">Republican</option><option value="T">Third Party</option></select></label>
+<label>Home state<select id="ch"></select></label>
+<label>Ideology<select id="ci"></select></label>
+<label>&nbsp;<button class="b" id="ca" type="button" style="width:100%;margin-top:3px">Add to simulation</button></label></div>
+<p class="ft" id="cinfo" style="margin:8px 0 0"></p></details>
+<div class="card"><div class="mh"><div class="tg" id="gt"><button class="on" data-g="s">States</button><button data-g="c">Counties</button></div>
+<div class="tg" id="mt"><button class="on" data-m="margin">Margin</button><button data-m="prob">Win chance</button></div></div>
+<div id="mst" class="ft" style="min-height:16px"></div><svg id="map" viewBox="0 0 975 610" preserveAspectRatio="xMidYMid meet"></svg></div>
+<div class="card"><h2>Closest states</h2><div class="strip" id="cl"></div></div>
+<div class="card"><h2>Electoral votes (Democratic) – distribution</h2><svg id="hist" viewBox="0 0 800 200" style="width:100%"></svg></div>
+<div class="card"><h2>Full state breakdown</h2><div class="wrap"><table><thead><tr id="th"></tr></thead><tbody id="tb"></tbody></table></div></div>
+<p class="ft">Margins are D minus R across all votes. Baseline margins (one decimal) and total votes cast are 2024 certified results (MEDSL / National Archives, via PollCheck); Maine and Nebraska district margins are computed from certified district totals. 2028 EVs use the current apportionment (unchanged until the 2030 census). Group shares of the electorate are rough estimates. The county map is an estimate: each county gets its state's simulated result adjusted for an estimated urban/rural profile (derived from county land area), not actual county returns.</p></div>
+<div id="tip"></div>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+// abbr,name,EV,2024 margin (D-R, all votes),total votes cast,region (N=Northeast/Mid-Atl,S=South,M=Midwest,W=West)
+const RAW=`AL,Alabama,9,-30.5,2265090,S|AK,Alaska,3,-13.1,338177,W|AZ,Arizona,11,-5.5,3389319,W|AR,Arkansas,6,-30.6,1182676,S|CA,California,54,20.1,15865475,W|CO,Colorado,10,11,3192745,W|CT,Connecticut,7,14.5,1759010,N|DE,Delaware,3,14.7,512913,N|DC,District of Columbia,3,83.8,325869,N|FL,Florida,30,-13.1,10893752,S|GA,Georgia,16,-2.2,5250905,S|HI,Hawaii,4,23.1,516701,W|ID,Idaho,4,-36.5,905057,W|IL,Illinois,19,10.9,5633310,M|IN,Indiana,11,-19,2936677,M|IA,Iowa,6,-13.2,1663506,M|KS,Kansas,6,-16.1,1327591,M|KY,Kentucky,8,-30.5,2074530,S|LA,Louisiana,8,-22,2006975,S|ME,Maine (statewide),2,6.94,831375,N|ME-1,Maine CD-1,1,21.59,433709,N|ME-2,Maine CD-2,1,-9.05,397666,N|MD,Maryland,10,28.5,3038334,N|MA,Massachusetts,11,25.2,3473668,N|MI,Michigan,15,-1.4,5664186,M|MN,Minnesota,10,4.2,3253920,M|MS,Mississippi,6,-22.9,1228008,S|MO,Missouri,10,-18.4,2995327,M|MT,Montana,4,-19.9,602963,W|NE,Nebraska (statewide),2,-20.46,952182,M|NE-1,Nebraska CD-1,1,-12.97,320194,M|NE-2,Nebraska CD-2,1,4.59,318646,M|NE-3,Nebraska CD-3,1,-53.61,313342,M|NV,Nevada,6,-3.1,1484840,W|NH,New Hampshire,4,2.8,826189,N|NJ,New Jersey,14,5.9,4272725,N|NM,New Mexico,5,6,923403,W|NY,New York,28,12.6,8262600,N|NC,North Carolina,16,-3.2,5699141,S|ND,North Dakota,3,-36.4,368155,M|OH,Ohio,17,-11.2,5767788,M|OK,Oklahoma,7,-34.3,1566173,S|OR,Oregon,8,14.3,2244493,W|PA,Pennsylvania,19,-1.7,7034206,N|RI,Rhode Island,4,13.8,513086,N|SC,South Carolina,9,-17.9,2548140,S|SD,South Dakota,3,-29.2,428922,M|TN,Tennessee,11,-29.7,3063942,S|TX,Texas,40,-13.7,11388674,S|UT,Utah,6,-21.6,1488494,W|VT,Vermont,3,31.5,369422,N|VA,Virginia,13,5.8,4503288,N|WA,Washington,12,18.2,3924243,W|WV,West Virginia,4,-41.9,762584,S|WI,Wisconsin,10,-0.9,3422918,M|WY,Wyoming,3,-45.8,269048,W`;
+const REG={N:0,S:1,M:2,W:3};
+// Estimated electorate shares (%) per state: White, Black, Hispanic | Urban, Suburban (Asian/other and rural are the remainders)
+const DEM={};`AL:64,26,3,22,38|AK:63,3,7,20,35|AZ:62,5,23,38,47|AR:71,15,6,18,32|CA:52,6,30,40,50|CO:71,4,16,35,50|CT:71,9,12,25,63|DE:64,21,6,20,55|DC:36,46,10,100,0|FL:59,13,22,38,47|GA:55,30,6,30,45|HI:22,2,10,55,35|ID:87,1,7,18,42|IL:68,13,11,40,47|IN:82,8,5,22,43|IA:90,3,4,18,35|KS:82,5,8,22,43|KY:88,7,2,18,32|LA:62,29,4,25,40|ME:94,1,1,8,32|MD:55,28,7,25,62|MA:76,7,8,30,63|MI:77,12,4,28,52|MN:82,5,4,28,45|MS:58,35,2,12,28|MO:79,11,4,25,43|MT:87,1,3,12,28|NE:82,4,8,28,42|NV:56,9,22,45,45|NH:92,1,3,12,53|NJ:60,12,17,22,72|NM:42,2,42,25,38|NY:62,14,14,40,48|NC:66,19,5,25,45|ND:87,2,2,20,25|OH:82,10,3,27,48|OK:69,7,7,25,38|OR:78,2,9,30,45|PA:79,10,5,28,52|RI:76,6,10,28,67|SC:64,25,4,20,43|SD:86,1,3,18,32|TN:74,15,4,25,42|TX:53,13,28,45,43|UT:82,1,10,38,52|VT:93,1,2,5,25|VA:66,18,6,25,52|WA:71,4,8,33,52|WV:92,3,1,8,25|WI:82,6,5,28,42|WY:86,1,9,15,33`.split('|').forEach(x=>{const[a,v]=x.split(':'),q=v.split(',').map(n=>n/100);DEM[a]={w:q[0],b:q[1],h:q[2],u:q[3],s:q[4]}});
+const GR=[['urb','Urban Voters'],['sub','Suburban Voters'],['rur','Rural / Small Town Voters'],['wh','White Voters'],['bl','Black Voters'],['hi','Hispanic / Latino Voters'],['ao','Asian / Other Voters']],sv={urb:0,sub:0,rur:0,wh:0,bl:0,hi:0,ao:0};
+const stateComp=d=>({u:d.u,s:d.s,r:1-d.u-d.s,w:d.w,b:d.b,h:d.h,a:Math.max(0,1-d.w-d.b-d.h)});
+// county/district profile from its state's shares and an urbanness score pu (0 rural .. 1 urban)
+function cComp(d,pu){const u=pu**3,r=(1-pu)**3,a0=Math.max(0,1-d.w-d.b-d.h),f=.6+.8*pu,k=Math.min(f,.9/(d.b+d.h+a0)),b=d.b*k,h=d.h*k,a=a0*k;return{u,s:1-u-r,r,b,h,a,w:1-b-h-a}}
+const demShift=c=>c.u*sv.urb+c.s*sv.sub+c.r*sv.rur+c.w*sv.wh+c.b*sv.bl+c.h*sv.hi+c.a*sv.ao;
+const U=RAW.split('|').map(s=>{const p=s.split(',');const ab=p[0],par=ab.split('-')[0],m0=+p[3];return{ab,name:p[1],ev:+p[2],m0,to:+p[4],reg:REG[p[5]],par,dist:ab.includes('-'),tier:m0>8?0:m0<-8?2:1}});
+const PI={};U.forEach((u,i)=>{if(!u.dist)PI[u.ab]=i});U.forEach(u=>u.pi=PI[u.par]);
+U.forEach(u=>{const d=DEM[u.par];u.c=u.dist?cComp(d,Math.min(.9,Math.max(.1,.5+(u.m0-U[u.pi].m0)/60))):stateComp(d)});
+// Ideology archetypes. n=national shift, r=[NE,South,MW,West] regional shifts, t=[blue,swing,red] state-type shifts (pts, positive helps own party), tp=[third-party share %, fraction of share taken from Democrats]
+const IDEO={PRG:{l:'Progressive / Populist Left',n:-.3,r:[.5,-.5,0,.5],t:[1.2,-1.2,-.5],tp:[2.2,.85]},
+LIB:{l:'Mainstream Liberal',n:.3,r:[.3,-.2,0,.3],t:[.3,.3,0],tp:[1.8,.75]},
+MOD:{l:'Moderate / Centrist',n:.8,r:[0,.3,.5,0],t:[-.4,1.5,.8],tp:[3,.5]},
+CON:{l:'Mainstream Conservative',n:.6,r:[-.2,.5,.2,0],t:[-.3,.8,.4],tp:[1.8,.3]},
+MAGA:{l:'MAGA / Nationalist Populist',n:-.2,r:[-.5,.5,.8,-.3],t:[-.5,-.5,1],tp:[2.2,.2]},
+LBT:{l:'Libertarian',n:.2,r:[0,0,.3,.8],t:[-.2,.5,-.2],tp:[1.8,.4]}};
+const hbFor=ab=>{const u=U[PI[ab]];return u?Math.round(Math.min(4.5,Math.max(2,4.8-Math.log10(u.to/250000)))*10)/10:0};
+// Candidates: [name, nationalShift, [NE,South,MW,West], homeState, ideology]; home-state bonus is computed from state size
+const D=[["Gavin Newsom",.3,[1,-1,-.5,1.5],"CA","LIB"],["Josh Shapiro",1,[.5,.5,1.2,0],"PA","MOD"],["Pete Buttigieg",.5,[.5,-.5,1,.5],"MI","MOD"],["Gretchen Whitmer",.8,[0,0,1.5,0],"MI","MOD"],["JB Pritzker",0,[.5,-1,.5,0],"IL","LIB"],["Andy Beshear",1,[0,2,.5,0],"KY","MOD"],["Alexandria Ocasio-Cortez",-.5,[1,-1,-1,1],"NY","PRG"],["Wes Moore",.3,[.5,.5,0,0],"MD","LIB"],["Cory Booker",-.3,[.5,0,-.5,0],"NJ","LIB"],["Kamala Harris",-1,[0,-.5,-.5,0],"CA","LIB"],["Mark Kelly",1,[0,.5,.5,1.5],"AZ","MOD"],["Ruben Gallego",.5,[0,0,0,1.5],"AZ","MOD"],["Jon Ossoff",.8,[0,1.5,0,0],"GA","LIB"],["Roy Cooper",.8,[0,1.5,.3,0],"NC","MOD"],["Chris Murphy",0,[.7,-.5,0,0],"CT","LIB"],["Ro Khanna",-.4,[.5,-.8,-.3,.8],"CA","PRG"],["Mark Cuban",.2,[-.3,.3,.5,.3],"TX","MOD"],["Stephen A. Smith",-.3,[.3,-.3,-.5,0],"NY","LIB"],["Bernie Sanders",-.8,[.7,-1,-.5,.5],"VT","PRG"],["Jon Stewart",.2,[.5,-.2,.3,.3],"NJ","LIB"]];
+const R=[["JD Vance",.2,[-.5,.5,.8,0],"OH","MAGA"],["Marco Rubio",.8,[0,1,0,.7],"FL","CON"],["Ron DeSantis",-.3,[-.5,1,0,0],"FL","CON"],["Nikki Haley",1,[.5,.5,0,.5],"SC","MOD"],["Glenn Youngkin",.8,[.5,.5,.5,0],"VA","CON"],["Brian Kemp",1,[0,1,.5,0],"GA","CON"],["Greg Abbott",.2,[-.5,1,0,.3],"TX","CON"],["Sarah Huckabee Sanders",-.2,[-.5,.7,0,0],"AR","MAGA"],["Vivek Ramaswamy",.2,[-.3,0,.5,.3],"OH","MAGA"],["Josh Hawley",.3,[-.5,0,1.2,0],"MO","MAGA"],["Tom Cotton",-.1,[-.5,.5,.3,0],"AR","CON"],["Donald Trump Jr.",-.8,[-.3,.5,.3,0],"FL","MAGA"],["Rand Paul",.2,[0,0,.5,.8],"KY","LBT"],["Tim Scott",.9,[.3,.8,0,0],"SC","CON"],["Byron Donalds",.3,[-.3,.7,0,.3],"FL","MAGA"],["Tucker Carlson",-.5,[-.5,.3,.5,0],"FL","MAGA"],["Marjorie Taylor Greene",-1.2,[-.8,.3,0,-.3],"GA","MAGA"],["Thomas Massie",-.2,[-.2,.2,.3,.5],"KY","LBT"],["Kristi Noem",-.4,[-.4,.2,.8,0],"SD","MAGA"]];
+// Third party: [name, vote share %, fraction of that share taken from Democrats, home state (share +1.5 there)]
+const T=[["None / minor candidates only",.8,.5,""],["Libertarian-style candidate",1.5,.4,""],["Green-style candidate",1.2,.85,""],["Centrist independent",3,.5,""],["Populist independent",2.5,.4,""],["Right-populist independent",2.5,.2,""],["Progressive independent",2,.75,""],["Candace Owens",2.2,.2,"TN"],["Independent Mark Cuban",3.5,.5,"TX"],["Independent Bernie Sanders",3.5,.85,"VT"],["Independent Tucker Carlson",3,.15,"FL"],["Independent Marjorie Taylor Greene",2.5,.15,"GA"],["Independent Thomas Massie",2,.3,"KY"],["Independent Stephen A. Smith",2.5,.65,"NY"],["Independent Jon Stewart",2.8,.65,"NJ"],["Independent Nikki Haley",3.5,.4,"SC"],["Independent Andy Beshear",3,.5,"KY"],["Independent Josh Shapiro",3,.55,"PA"]];
+[D,R].forEach(A=>A.forEach(c=>c[5]=hbFor(c[3])));// c[5]=home-state bonus
+const $=id=>document.getElementById(id),SIMS=4000,ix=(A,n)=>A.findIndex(c=>c[0]===n);
+const fill=(el,arr,ex)=>{const v=el.value;el.innerHTML=arr.map((c,i)=>c[0]===ex?'':`<option value="${i}">${c[0]}</option>`).join('');if(v!==''&&[...el.options].some(o=>o.value===v))el.value=v};
+const fillT=()=>{const v=$('tp').value;$('tp').innerHTML=T.map((t,i)=>`<option value="${i}">${t[0]}</option>`).join('');if(v)$('tp').value=v};
+fill($('dn'),D);fill($('rn'),R);fillT();
+$('dn').value=ix(D,'Josh Shapiro');fill($('dv'),D,'Josh Shapiro');$('dv').value=ix(D,'Gretchen Whitmer');
+$('rn').value=ix(R,'JD Vance');fill($('rv'),R,'JD Vance');$('rv').value=ix(R,'Marco Rubio');
+$('ch').innerHTML='<option value="">(none / not applicable)</option>'+U.filter(u=>!u.dist).sort((a,b)=>a.name.localeCompare(b.name)).map(u=>`<option value="${u.ab}">${u.name.replace(' (statewide)','')}</option>`).join('');
+$('ci').innerHTML=Object.keys(IDEO).map(k=>`<option value="${k}">${IDEO[k].l}</option>`).join('');
+const randn=()=>{let u=0;while(!u)u=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*Math.random())};
+const rt=(df,sd)=>{let c=0;for(let i=0;i<df;i++){const z=randn();c+=z*z}return sd*Math.sqrt((df-2)/df)*randn()/Math.sqrt(c/df)};
+let res=null,mode='margin',sk='ev',sd=-1,geo=null;
+const envV=()=>+$('env').value;
+function means(dn,dv,rn,rv,tp){const E=envV();return U.map(u=>{let m=u.m0+E;
+ const tick=(c,sg,w)=>{m+=sg*w*(c[1]+c[2][u.reg]+IDEO[c[4]].t[u.tier]);if(c[3]===u.par)m+=sg*c[5]};
+ tick(dn,1,1);tick(dv,1,.25);tick(rn,-1,1);tick(rv,-1,.25);
+ m+=(tp[1]+(tp[3]===u.par?1.5:0))*(1-2*tp[2])+demShift(u.c);return m})}
+function sim(){const dn=D[$('dn').value],dv=D[$('dv').value],rn=R[$('rn').value],rv=R[$('rv').value],tp=T[$('tp').value];
+ const mu=means(dn,dv,rn,rv,tp),n=U.length,win=new Float64Array(n),sum=new Float64Array(n),hist=new Array(55).fill(0),tip={};
+ let dW=0,rW=0,tie=0,evS=0,pvS=0,TO=0;U.forEach(u=>{if(!u.dist)TO+=u.to});
+ const m=new Float64Array(n),idx=U.map((_,i)=>i);
+ for(let s=0;s<SIMS;s++){const nat=rt(8,2.4),rg=[0,1,2,3].map(()=>rt(6,2.2)),se={};
+  let ev=0,pv=0;
+  for(let i=0;i<n;i++){const u=U[i];let e=se[u.par];if(e===undefined)e=se[u.par]=rt(5,2.8);
+   m[i]=mu[i]+nat+rg[u.reg]+e+(u.dist?randn()*1.6:0);
+   if(m[i]>0){win[i]++;ev+=u.ev}sum[i]+=m[i];if(!u.dist)pv+=m[i]*u.to}
+  evS+=ev;pvS+=pv/TO;hist[Math.min(54,Math.floor(ev/10))]++;
+  if(ev===269)tie++;else{const d=ev>269;if(d)dW++;else rW++;
+   idx.sort((a,b)=>d?m[b]-m[a]:m[a]-m[b]);let c=0;for(const i of idx){c+=U[i].ev;if(c>=270){tip[i]=(tip[i]||0)+1;break}}}}
+ let tp_=0,ti=0;for(const k in tip)if(tip[k]>tp_){tp_=tip[k];ti=+k}
+ return{p:U.map((_,i)=>win[i]/SIMS),m:U.map((_,i)=>sum[i]/SIMS),dW:dW/SIMS,rW:rW/SIMS,tie:tie/SIMS,ev:evS/SIMS,pv:pvS/SIMS,hist,tip:ti,dem:U.map(u=>demShift(u.c))}}
+const f1=x=>Math.abs(x).toFixed(1),lab=x=>(x>=0?'D+':'R+')+f1(x),cls=x=>x>=0?'D':'R';
+const cm=d3.scaleLinear().domain([-25,-8,0,8,25]).range(['#b2182b','#ef8a62','#e8e6e1','#67a9cf','#2166ac']).clamp(true);
+const cp=d3.scaleLinear().domain([0,.5,1]).range(['#b2182b','#e8e6e1','#2166ac']);
+const colr=i=>mode==='margin'?cm(res.m[i]):cp(res.p[i]);
+function render(){const r=res;
+ $('ban').innerHTML=`<div class="st"><b class="D">${(r.dW*100).toFixed(1)}%</b><span>Democratic win probability</span></div>
+ <div class="st"><b class="R">${(r.rW*100).toFixed(1)}%</b><span>Republican win probability</span></div>
+ <div class="st"><b><span style="color:var(--D)">${r.ev.toFixed(0)}</span>–<span style="color:var(--R)">${(538-r.ev).toFixed(0)}</span></b><span>Average electoral votes (D–R)</span></div>
+ <div class="st"><b class="${cls(r.pv)}">${lab(r.pv)}</b><span>Popular vote margin</span></div>
+ <div class="st"><b>${U[r.tip].name.replace(' (statewide)','')}</b><span>Most common tipping-point state</span></div>
+ <div class="st"><b>${(r.tie*100).toFixed(1)}%</b><span>269–269 deadlock odds</span></div>`;
+ $('wb').innerHTML=`<i style="width:${r.dW*100}%;background:var(--D)"></i><i style="width:${r.tie*100}%;background:#999"></i><i style="width:${r.rW*100}%;background:var(--R)"></i>`;
+ paintMap();
+ const near=U.map((u,i)=>i).sort((a,b)=>Math.abs(r.m[a])-Math.abs(r.m[b])).slice(0,10);
+ $('cl').innerHTML=near.map(i=>`<div class="chip"><b>${U[i].ab}</b> · ${U[i].ev} EV<br><span class="${cls(r.m[i])}">${lab(r.m[i])}</span> · ${(r.p[i]*100).toFixed(0)}% D</div>`).join('');
+ const s=d3.select('#hist').html(''),W=800,H=200,x=d3.scaleLinear([0,550],[30,W-10]),mx=d3.max(r.hist),y=d3.scaleLinear([0,mx],[H-26,8]);
+ r.hist.forEach((c,b)=>{const lo=b*10;s.append('rect').attr('x',x(lo)+1).attr('y',y(c)).attr('width',x(10)-x(0)-2).attr('height',H-26-y(c)).attr('fill',lo+9>=270?'#2166ac':'#b2182b').attr('opacity',lo<=269&&lo+9>=269?.55:.9)});
+ s.append('line').attr('x1',x(270)).attr('x2',x(270)).attr('y1',4).attr('y2',H-26).attr('stroke','currentColor').attr('stroke-dasharray','4');
+ s.append('text').attr('x',x(270)+4).attr('y',14).attr('font-size',11).attr('fill','currentColor').text('270 to win');
+ [0,100,200,270,350,450,538].forEach(v=>s.append('text').attr('x',x(v)).attr('y',H-8).attr('font-size',10).attr('text-anchor','middle').attr('fill','currentColor').text(v));
+ table()}
+const COLS=[['name','State'],['ev','EV'],['m','Avg margin'],['p','D win %'],['m0','2024 margin'],['to','2024 votes cast']];
+function table(){$('th').innerHTML=COLS.map(c=>`<th data-k="${c[0]}">${c[1]}${sk===c[0]?(sd>0?' ▲':' ▼'):''}</th>`).join('');
+ const rows=U.map((u,i)=>({...u,i,m:res.m[i],p:res.p[i]}));
+ rows.sort((a,b)=>sk==='name'?sd*a.name.localeCompare(b.name):sd*(a[sk]-b[sk]));
+ $('tb').innerHTML=rows.map(u=>`<tr><td>${u.name}</td><td>${u.ev}</td><td class="${cls(u.m)}">${lab(u.m)}</td><td>${(u.p*100).toFixed(0)}%</td><td class="${cls(u.m0)}">${lab(u.m0)}</td><td>${u.to.toLocaleString()}</td></tr>`).join('');
+ document.querySelectorAll('#th th').forEach(t=>t.onclick=()=>{const k=t.dataset.k;sd=sk===k?-sd:(k==='name'?1:-1);sk=k;table()})}
+let tm;function go(){clearTimeout(tm);tm=setTimeout(()=>{res=sim();render()},15)}
+const envLab=()=>{const v=envV();$('envo').textContent=v===0?'Even':lab(v);$('envo').className=v>=0?'D':'R'};
+$('env').oninput=()=>{envLab();go()};$('envr').onclick=()=>{$('env').value=1.5;envLab();go()};envLab();
+['dn','dv','rn','rv','tp'].forEach(id=>$(id).onchange=()=>{if(id==='dn')fill($('dv'),D,D[$('dn').value][0]);if(id==='rn')fill($('rv'),R,R[$('rn').value][0]);go()});
+function cinfo(){const p=$('cp').value,h=$('ch').value,I=IDEO[$('ci').value];
+ $('cinfo').textContent=p==='T'?`Third-party draw: ~${I.tp[0]}% of the vote, ${Math.round(I.tp[1]*100)}% of it from Democrats${h?`; +1.5 pts share in ${h}`:''}.`
+ :`Home-state bonus: ${h?'+'+hbFor(h)+' pts in '+h:'none'}. National ${I.n>=0?'+':''}${I.n}; state-type shifts (blue / swing / red): ${I.t.map(v=>(v>=0?'+':'')+v).join(' / ')}.`}
+['cp','ch','ci'].forEach(id=>$(id).onchange=cinfo);cinfo();
+$('ca').onclick=()=>{const p=$('cp').value,h=$('ch').value,k=$('ci').value,I=IDEO[k];let nm=$('cn').value.trim()||'Custom Candidate';
+ if(p==='T'){T.push([nm+' (Ind.)',I.tp[0],I.tp[1],h]);fillT();$('tp').value=T.length-1}
+ else{const A=p==='D'?D:R,q=p==='D'?'d':'r';A.push([nm,I.n,I.r.slice(),h,k,h?hbFor(h):0]);
+  fill($(q+'n'),A);$(q+'n').value=A.length-1;fill($(q+'v'),A,nm)}
+ $('cn').value='';go()};
+// ---- demographic sliders ----
+$('dg').innerHTML=GR.map(g=>`<div><label for="s_${g[0]}">${g[1]} <b id="o_${g[0]}" style="float:right">Even</b></label><input type="range" id="s_${g[0]}" min="-15" max="15" step="0.5" value="0" style="width:100%"><div class="ends"><span>R+15</span><span>D+15</span></div></div>`).join('');
+const setO=(k,v)=>{const o=$('o_'+k);o.textContent=v===0?'Even':lab(v);o.className=v>=0?'D':'R'};
+GR.forEach(g=>{const e=$('s_'+g[0]);e.oninput=()=>{sv[g[0]]=+e.value;setO(g[0],+e.value);go()}});
+$('dr').onclick=()=>{GR.forEach(g=>{$('s_'+g[0]).value=0;sv[g[0]]=0;setO(g[0],0)});go()};
+// ---- map (pre-projected us-atlas Albers files, 975x610, so no projection is needed) ----
+const AT='https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/',tip=$('tip'),svg=d3.select('#map'),path=d3.geoPath();
+let view='s',sFeat=null,sTopo=null,sSel=null,cFeat=null,cTopo=null,cSel=null;
+const NM={};U.forEach(u=>{if(!u.dist)NM[u.name.replace(' (statewide)','')]=u.ab});
+const stx=m=>$('mst').textContent=m,Phi=z=>1/(1+Math.exp(-1.702*z)),hideTip=()=>{tip.style.display='none'};
+function showTip(e,h){tip.innerHTML=h;tip.style.display='block';const w=tip.offsetWidth,ht=tip.offsetHeight;let x=e.clientX+14,y=e.clientY+14;if(x+w>innerWidth-8)x=e.clientX-w-14;if(y+ht>innerHeight-8)y=e.clientY-ht-14;tip.style.left=x+'px';tip.style.top=y+'px'}
+const cMargin=f=>{const c=f.c;return c.base+(res.m[c.pi]-U[c.pi].m0-res.dem[c.pi])+demShift(c.comp)};
+function paintMap(){if(!res)return;
+ if(view==='s'&&sSel)sSel.attr('fill',d=>colr(PI[d.ab]));
+ if(view==='c'&&cSel)cSel.attr('fill',f=>{const m=cMargin(f);return mode==='margin'?cm(m):cp(Phi(m/4.4))})}
+function drawStates(){svg.selectAll('*').remove();stx('');
+ sSel=svg.append('g').selectAll('path').data(sFeat).join('path').attr('d',path)
+  .on('mousemove',(e,d)=>{const i=PI[d.ab],u=U[i];let ex='';if(d.ab==='ME'||d.ab==='NE')ex='<br>'+U.filter(z=>z.par===d.ab&&z.dist).map(z=>`${z.ab}: ${lab(res.m[U.indexOf(z)])}`).join(' · ');
+   showTip(e,`<b>${d.properties.name}</b> · ${u.ev} EV<br>Avg margin: ${lab(res.m[i])}<br>Dem win chance: ${(res.p[i]*100).toFixed(0)}%${ex}`)})
+  .on('mouseleave',hideTip);
+ svg.append('path').datum(topojson.mesh(sTopo,sTopo.objects.states,(a,b)=>a!==b)).attr('class','sb').attr('d',path);paintMap()}
+function cTip(f){const c=f.c,m=cMargin(f),o=1.5,k=c.comp,P=x=>Math.round(x*100);
+ return `<b>${f.properties.name}, ${U[c.pi].name.replace(' (statewide)','')}</b><br>Est. margin: ${lab(m)}<br>D ${((100-o+m)/2).toFixed(1)}% · R ${((100-o-m)/2).toFixed(1)}% · Other ${o}%<br>D win chance: ${(Phi(m/4.4)*100).toFixed(0)}%<br><span style="opacity:.75">Est. profile: urban ${P(k.u)}% · suburban ${P(k.s)}% · rural ${P(k.r)}%<br>White ${P(k.w)}% · Black ${P(k.b)}% · Hispanic ${P(k.h)}% · Asian/other ${P(k.a)}%</span>`}
+function drawCounties(){svg.selectAll('*').remove();stx('Counties show estimated lean (state result plus an estimated urban/rural profile), not actual county returns.');
+ cSel=svg.append('g').selectAll('path').data(cFeat).join('path').attr('class','c').attr('d',path).on('mousemove',(e,f)=>showTip(e,cTip(f))).on('mouseleave',hideTip);
+ svg.append('path').datum(topojson.mesh(cTopo,cTopo.objects.states,(a,b)=>a!==b)).attr('class','sb').attr('d',path);paintMap()}
+function loadCounties(){if(cFeat)return drawCounties();stx('Loading ~3,100 counties…');
+ fetch(AT+'counties-albers-10m.json').then(r=>r.json()).then(t=>{cTopo=t;const sn={},by={};
+  topojson.feature(t,t.objects.states).features.forEach(f=>sn[String(f.id).padStart(2,'0')]=NM[f.properties.name]);
+  topojson.feature(t,t.objects.counties).features.forEach(f=>{const ab=sn[String(f.id).padStart(5,'0').slice(0,2)];if(!ab)return;f.a=path.area(f)||.1;(by[ab]=by[ab]||[]).push(f)});
+  cFeat=[];for(const ab in by){const L=by[ab].sort((a,b)=>a.a-b.a),n=L.length,pi=PI[ab],m0=U[pi].m0;
+   L.forEach((f,i)=>{const rk=n>1?1-i/(n-1):.9,ab2=Math.min(1,Math.max(0,.5-.22*Math.log(f.a/60))),pu=n>1?.5*rk+.5*ab2:.9,h=((Number(f.id)*2654435761)>>>0)/4294967296*2-1;
+    f.c={pi,pu,base:m0+28*(pu-.5)+3*h,comp:cComp(DEM[ab],pu)};cFeat.push(f)})}
+  if(view==='c')drawCounties()}).catch(()=>stx('County data failed to load (needs internet access to jsDelivr).'))}
+document.querySelectorAll('#gt button').forEach(b=>b.onclick=()=>{view=b.dataset.g;document.querySelectorAll('#gt button').forEach(x=>x.classList.toggle('on',x===b));hideTip();if(view==='s'){if(sFeat)drawStates()}else loadCounties()});
+document.querySelectorAll('#mt button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;document.querySelectorAll('#mt button').forEach(x=>x.classList.toggle('on',x===b));paintMap()});
+res=sim();render();
+fetch(AT+'states-albers-10m.json').then(r=>r.json()).then(t=>{sTopo=t;sFeat=topojson.feature(t,t.objects.states).features.map(f=>(f.ab=NM[f.properties.name],f)).filter(f=>f.ab);if(view==='s')drawStates()}).catch(()=>stx('Map data failed to load (needs internet access to jsDelivr). All other panels still work.'));
+</script></body></html>
